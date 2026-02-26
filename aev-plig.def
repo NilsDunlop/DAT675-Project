@@ -1,0 +1,40 @@
+Bootstrap: docker
+From: continuumio/miniconda3:23.10.0-1
+
+%post
+    conda install -y python=3.8.19
+
+    # ── PyTorch 2.4 with CUDA 12.1 ──
+    pip install torch==2.4.0 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+    # ── PyTorch Geometric ecosystem (pre-built wheels for torch 2.4.0+cu121) ──
+    pip install torch-scatter -f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+    pip install torch-geometric
+
+    # ── Chemistry & molecular tools ──
+    pip install rdkit
+    pip install torchani
+    pip install qcelemental
+    pip install biopandas
+
+    # ── Core data & ML tools ──
+    pip install pandas numpy scipy scikit-learn
+
+    # ── Utilities ──
+    pip install tqdm psutil
+
+    conda clean --all -y
+    pip cache purge
+
+%environment
+    export PATH=/opt/conda/bin:$PATH
+
+%test
+    # Verify key imports work
+    python3 -c "import torch; print(f'PyTorch {torch.__version__}, CUDA available: {torch.cuda.is_available()}')"
+    python3 -c "import torch_geometric; print(f'PyG {torch_geometric.__version__}')"
+    python3 -c "import rdkit; print(f'RDKit {rdkit.__version__}')"
+    python3 -c "import torchani; print(f'TorchANI {torchani.__version__}')"
+    python3 -c "import qcelemental; print(f'QCElemental {qcelemental.__version__}')"
+    python3 -c "import biopandas; print(f'BioPandas {biopandas.__version__}')"
+    python3 -c "import sklearn; print(f'scikit-learn {sklearn.__version__}')"
