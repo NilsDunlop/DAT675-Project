@@ -1,13 +1,23 @@
 # Apptainer / Singularity containers
 *.sif
 
-# SLURM output logs
+# SLURM
 slurm_*.out
+slurm/
+
+# Large training data directories
+data/pdbbind/
+data/bindingnet/
+data/bindingdb/
 
 # Generated data artifacts
 *.pickle
 data/processed/
 data/*_processed.csv
+
+# Compressed archives
+*.tar.gz
+*.tar
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -88,6 +98,12 @@ ipython_config.py
 # IDE
 .vscode/
 .idea/
+
+# Weights & Biases
+wandb/
+wandb_logs/
+wandb_cache/
+wandb_config/
 *.swp
 *.swo
 *~
