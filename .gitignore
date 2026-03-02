@@ -9,6 +9,7 @@ slurm/
 data/pdbbind/
 data/bindingnet/
 data/bindingdb/
+data/CASF-2016/
 
 # Generated data artifacts
 *.pickle
@@ -104,6 +105,12 @@ wandb/
 wandb_logs/
 wandb_cache/
 wandb_config/
+
+# Output Models and Data
+output/
+*.pickle
+*.model
+
 *.swp
 *.swo
 *~
