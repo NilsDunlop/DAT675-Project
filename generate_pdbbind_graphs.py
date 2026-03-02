@@ -169,7 +169,7 @@ def atom_features(atom, features=["atom_symbol",
     return np.array(feature_list)
 
 
-def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
+def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_symbol",
                                                     "num_heavy_atoms", 
                                                     "total_num_Hs", 
                                                     "explicit_valence",
@@ -179,6 +179,7 @@ def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
     features = []
     heavy_atom_index = []
     idx_to_idx = {}
+    coords=[]
     counter = 0
     
     # Generate nodes
@@ -190,30 +191,54 @@ def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
             feature = np.append(atom_features(atom), aevs[aev_idx,:])
             features.append(feature)
             counter += 1
+    # Generate nodes
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() != "H":
+
+            idx_to_idx[atom.GetIdx()] = counter
+            heavy_atom_index.append(atom.GetIdx())
+            aev_idx = mol_df[mol_df['ATOM_INDEX'] == atom.GetIdx()].index
+            feature = np.append(atom_features(atom), aevs[aev_idx,:])
+            features.append(feature)
+            pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
+            coords.append([pos.x, pos.y, pos.z])
+            counter += 1
+
+    coords = np.array(coords)
+
+    dist_matrix = cdist(coords, coords)
     
-    #Generate edges
+    # Generate edges by distance
     edges = []
-    for bond in mol.GetBonds():
-        idx1 = bond.GetBeginAtomIdx()
-        idx2 = bond.GetEndAtomIdx()
-        if idx1 in heavy_atom_index and idx2 in heavy_atom_index:
-            bond_type = one_of_k_encoding(bond.GetBondType(),[1,12,2,3])
-            bond_type = [float(b) for b in bond_type]
-            edge1 = [idx_to_idx[idx1], idx_to_idx[idx2]]
-            edge1.extend(bond_type)
-            edge2 = [idx_to_idx[idx2], idx_to_idx[idx1]]
-            edge2.extend(bond_type)
-            edges.append(edge1)
-            edges.append(edge2)
     
-    df = pd.DataFrame(edges, columns=['atom1', 'atom2', 'single', 'aromatic', 'double', 'triple'])
+    for i in range(n_atoms):
+        neighbors = np.where(dist_matrix[i] <= radius)[0]
+    
+        for j in neighbors:
+            if i != j:
+                edges.append([i, j, dist_matrix[i,j]])
+
+    
+    df = pd.DataFrame(edges, columns=['atom1', 'atom2', 'distance'])
     df = df.sort_values(by=['atom1','atom2'])
     
     edge_index = df[['atom1','atom2']].to_numpy().tolist()
-    edge_attr = df[['single','aromatic','double','triple']].to_numpy().tolist()
+    edge_attr = df[['distance']].to_numpy().tolist()
     
     
     return len(mol_df), features, edge_index, edge_attr
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--topology-radius",
+    type=float,
+    required=True,
+    help="Radius cutoff for topology graph"
+)
+args = parser.parse_args()
+topology_cutoff = args.topology_cutoff
+
 
 '''
 Load data

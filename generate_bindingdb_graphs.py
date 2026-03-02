@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 from rdkit import Chem
 from scipy.spatial.distance import cdist
+import argparse
 
 def elements_to_atomicnums(elements):
     atomicnums = np.zeros(len(elements), dtype=int)
@@ -166,7 +167,7 @@ def atom_features(atom, features=["atom_symbol",
     return np.array(feature_list)
 
 
-def mol_to_graph(mol, mol_df, aevs, edge_radius=5.0, extra_features=["atom_symbol",
+def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_symbol",
                                                     "num_heavy_atoms", 
                                                     "total_num_Hs", 
                                                     "explicit_valence",
@@ -209,7 +210,7 @@ def mol_to_graph(mol, mol_df, aevs, edge_radius=5.0, extra_features=["atom_symbo
     edges = []
     
     for i in range(n_atoms):
-        neighbors = np.where(dist_matrix[i] <= radius)[0]
+        neighbors = np.where(dist_matrix[i] <= topology_cutoff)[0]
     
         for j in neighbors:
             if i != j:
@@ -226,6 +227,15 @@ def mol_to_graph(mol, mol_df, aevs, edge_radius=5.0, extra_features=["atom_symbo
     return len(mol_df), features, edge_index, edge_attr
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--topology-radius",
+    type=float,
+    required=True,
+    help="Radius cutoff for topology graph"
+)
+args = parser.parse_args()
+topology_cutoff = args.topology_cutoff
 
 """
 Load data

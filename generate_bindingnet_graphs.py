@@ -7,6 +7,7 @@ import qcelemental as qcel
 import numpy as np
 from tqdm import tqdm
 from rdkit import Chem
+import argparse
 
 def elements_to_atomicnums(elements):
     atomicnums = np.zeros(len(elements), dtype=int)
@@ -165,7 +166,72 @@ def atom_features(atom, features=["atom_symbol",
     return np.array(feature_list)
 
 
-def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
+def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_symbol",
+                                                    "num_heavy_atoms", 
+                                                    "total_num_Hs", 
+                                                    "explicit_valence",
+                                                    "is_aromatic",
+                                                    "is_in_ring"]):
+
+    features = []
+    heavy_atom_index = []
+    idx_to_idx = {}
+    coords=[]
+    counter = 0
+    
+    # Generate nodes
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() != "H": # Include only non-hydrogen atoms
+            idx_to_idx[atom.GetIdx()] = counter
+            aev_idx = mol_df[mol_df['ATOM_INDEX'] == atom.GetIdx()].index
+            heavy_atom_index.append(atom.GetIdx())
+            feature = np.append(atom_features(atom), aevs[aev_idx,:])
+            features.append(feature)
+            counter += 1
+    # Generate nodes
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() != "H":
+
+            idx_to_idx[atom.GetIdx()] = counter
+            heavy_atom_index.append(atom.GetIdx())
+            aev_idx = mol_df[mol_df['ATOM_INDEX'] == atom.GetIdx()].index
+            feature = np.append(atom_features(atom), aevs[aev_idx,:])
+            features.append(feature)
+            pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
+            coords.append([pos.x, pos.y, pos.z])
+            counter += 1
+
+    coords = np.array(coords)
+
+    dist_matrix = cdist(coords, coords)
+    
+    # Generate edges by distance
+    edges = []
+    
+    for i in range(n_atoms):
+        neighbors = np.where(dist_matrix[i] <= radius)[0]
+    
+        for j in neighbors:
+            if i != j:
+                edges.append([i, j, dist_matrix[i,j]])
+
+    
+    df = pd.DataFrame(edges, columns=['atom1', 'atom2', 'distance'])
+    df = df.sort_values(by=['atom1','atom2'])
+    
+    edge_index = df[['atom1','atom2']].to_numpy().tolist()
+    edge_attr = df[['distance']].to_numpy().tolist()
+    
+    
+    return len(mol_df), features, edge_index, edge_attr
+
+
+
+
+
+
+
+def mol_to_graph_old(mol, mol_df, aevs, extra_features=["atom_symbol",
                                                     "num_heavy_atoms", 
                                                     "total_num_Hs", 
                                                     "explicit_valence",
@@ -210,6 +276,17 @@ def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
     
     
     return len(mol_df), features, edge_index, edge_attr
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--topology-radius",
+    type=float,
+    required=True,
+    help="Radius cutoff for topology graph"
+)
+args = parser.parse_args()
+topology_cutoff = args.topology_cutoff
 
 
 """
