@@ -81,6 +81,7 @@ def parse_args():
     parser.add_argument('--head', type=int, default=3)
     parser.add_argument('--lr', type=float, default=0.00012291937615434127)
     parser.add_argument('--activation_function', type=str, default='leaky_relu')
+    parser.add_argument('--output', type=str, default='output')
     args = parser.parse_args()
     return args
 
@@ -99,7 +100,7 @@ def train_NN(args):
     print('Running dataset {} on model {}.'.format(dataset, model_st))
     
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    model_output_dir = os.path.join("output", "trained_models")
+    model_output_dir = os.path.join(args.output, "trained_models")
     
     train_data = GraphDataset(root='data', dataset=dataset+'_train', y_scaler=None)
     valid_data = GraphDataset(root='data', dataset=dataset+'_valid', y_scaler=train_data.y_scaler)
