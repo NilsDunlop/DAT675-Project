@@ -1,20 +1,32 @@
 import pandas as pd
 import pickle
 from utils import GraphDataset
+import argparse
+
+"""
+read arguments
+"""
+parser = argparse.ArgumentParser()
+parser.add_argument('--outdir', type=str, default='processed')
+parser.add_argument('--input', type=str, default='')
+args = parser.parse_args()
+
+outdir=args.outdir
+input_dir=args.input
 
 """
 Load graphs
 """
 print("loading graph from pickle file for pdbbind2020")
-with open("data/pdbbind.pickle", 'rb') as handle:
+with open("data/" + input_dir + "/pdbbind.pickle", 'rb') as handle:
     pdbbind_graphs = pickle.load(handle)
 
 print("loading graph from pickle file for BindingNet")
-with open("data/bindingnet.pickle", 'rb') as handle:
+with open("data/" + input_dir + "/bindingnet.pickle", 'rb') as handle:
     bindingnet_graphs = pickle.load(handle)
 
 print("loading graph from pickle file for BindingDB")
-with open("data/bindingdb.pickle", 'rb') as handle:
+with open("data/" + input_dir + "/bindingdb.pickle", 'rb') as handle:
     bindingdb_graphs = pickle.load(handle)
 
 graphs_dict = {**pdbbind_graphs, **bindingnet_graphs, **bindingdb_graphs}
@@ -58,10 +70,10 @@ test_ids, test_y = list(df['unique_id']), list(df['pK'])
 
 # make data PyTorch Geometric ready
 print('preparing ', dataset + '_train.pt in pytorch format!')
-train_data = GraphDataset(root='data', dataset=dataset + '_train', ids=train_ids, y=train_y, graphs_dict=graphs_dict)
+train_data = GraphDataset(root='data', outdir=outdir, dataset=dataset + '_train', ids=train_ids, y=train_y, graphs_dict=graphs_dict)
 
 print('preparing ', dataset + '_valid.pt in pytorch format!')
-valid_data = GraphDataset(root='data', dataset=dataset + '_valid', ids=valid_ids, y=valid_y, graphs_dict=graphs_dict)
+valid_data = GraphDataset(root='data', outdir=outdir, dataset=dataset + '_valid', ids=valid_ids, y=valid_y, graphs_dict=graphs_dict)
 
 print('preparing ', dataset + '_test.pt in pytorch format!')
-test_data = GraphDataset(root='data', dataset=dataset + '_test', ids=test_ids, y=test_y, graphs_dict=graphs_dict)
+test_data = GraphDataset(root='data', outdir=outdir, dataset=dataset + '_test', ids=test_ids, y=test_y, graphs_dict=graphs_dict)

@@ -82,6 +82,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=0.00012291937615434127)
     parser.add_argument('--activation_function', type=str, default='leaky_relu')
     parser.add_argument('--output', type=str, default='output')
+    parser.add_argument('--input', type=str, default='processed')
     args = parser.parse_args()
     return args
 
@@ -101,10 +102,11 @@ def train_NN(args):
     
     timestr = time.strftime("%Y%m%d-%H%M%S")
     model_output_dir = os.path.join(args.output, "trained_models")
+    input_dir = args.input
     
-    train_data = GraphDataset(root='data', dataset=dataset+'_train', y_scaler=None)
-    valid_data = GraphDataset(root='data', dataset=dataset+'_valid', y_scaler=train_data.y_scaler)
-    test_data = GraphDataset(root='data', dataset=dataset+'_test', y_scaler=train_data.y_scaler)
+    train_data = GraphDataset(root='data', subdir=input_dir, dataset=dataset+'_train', y_scaler=None)
+    valid_data = GraphDataset(root='data', subdir=input_dir, dataset=dataset+'_valid', y_scaler=train_data.y_scaler)
+    test_data = GraphDataset(root='data',  subdir=input_dir, dataset=dataset+'_test', y_scaler=train_data.y_scaler)
 
     seeds = [100, 123, 15, 257, 2, 2012, 3752, 350, 843, 621]
     for i,seed in enumerate(seeds):

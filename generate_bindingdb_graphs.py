@@ -1,4 +1,5 @@
 import pandas as pd
+from pathlib import Path
 import pickle
 import torch
 import torchani
@@ -8,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from rdkit import Chem
 from scipy.spatial.distance import cdist
+import scipy
 import argparse
 
 def elements_to_atomicnums(elements):
@@ -168,8 +170,8 @@ def atom_features(atom, features=["atom_symbol",
 
 
 def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_symbol",
-                                                    "num_heavy_atoms", 
-                                                    "total_num_Hs", 
+                                                    "num_heavy_atoms",
+                                                    "total_num_Hs",
                                                     "explicit_valence",
                                                     "is_aromatic",
                                                     "is_in_ring"]):
@@ -177,9 +179,9 @@ def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_s
     features = []
     heavy_atom_index = []
     idx_to_idx = {}
-    coords=[]
+    coords = []
     counter = 0
-    
+
     # Generate nodes
     for atom in mol.GetAtoms():
         if atom.GetSymbol() != "H": # Include only non-hydrogen atoms
@@ -188,52 +190,45 @@ def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_s
             heavy_atom_index.append(atom.GetIdx())
             feature = np.append(atom_features(atom), aevs[aev_idx,:])
             features.append(feature)
-            counter += 1
-    # Generate nodes
-    for atom in mol.GetAtoms():
-        if atom.GetSymbol() != "H":
 
-            idx_to_idx[atom.GetIdx()] = counter
-            heavy_atom_index.append(atom.GetIdx())
-            aev_idx = mol_df[mol_df['ATOM_INDEX'] == atom.GetIdx()].index
-            feature = np.append(atom_features(atom), aevs[aev_idx,:])
-            features.append(feature)
             pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
             coords.append([pos.x, pos.y, pos.z])
+
             counter += 1
 
     coords = np.array(coords)
+    n_atoms = len(coords)
 
-    dist_matrix = cdist(coords, coords)
-    
-    # Generate edges by distance
+    #Generate edges
     edges = []
-    
+
+    dist_matrix = scipy.spatial.distance.cdist(coords, coords)
+
     for i in range(n_atoms):
         neighbors = np.where(dist_matrix[i] <= topology_cutoff)[0]
-    
+
         for j in neighbors:
             if i != j:
-                edges.append([i, j, dist_matrix[i,j]])
+                edge = [i, j, dist_matrix[i,j]]
+                edges.append(edge)
 
-    
     df = pd.DataFrame(edges, columns=['atom1', 'atom2', 'distance'])
     df = df.sort_values(by=['atom1','atom2'])
-    
+
     edge_index = df[['atom1','atom2']].to_numpy().tolist()
     edge_attr = df[['distance']].to_numpy().tolist()
-    
-    
+
+
     return len(mol_df), features, edge_index, edge_attr
 
 
+
+
+
+
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--topology-radius",
-    type=float,
-    required=True,
-    help="Radius cutoff for topology graph"
-)
+parser.add_argument("--topology-cutoff", type=float, required=True, help="Radius cutoff for topology graph")
+parser.add_argument("--outdir", type=str, required=True)
 args = parser.parse_args()
 topology_cutoff = args.topology_cutoff
 
@@ -273,6 +268,7 @@ for index, row in tqdm(df.iterrows()):
     mol_graphs[row["unique_id"]] = graph
 
 #save the graphs to use as input for the GNN models
-output_file_graphs = "data/bindingdb.pickle"
+output_file_graphs = "data/" + outdir + "bindingdb.pickle"
+Path("data/" + outdir).mkdir(parents=True, exist_ok=True)
 with open(output_file_graphs, 'wb') as handle:
     pickle.dump(mol_graphs, handle, protocol=pickle.HIGHEST_PROTOCOL)
