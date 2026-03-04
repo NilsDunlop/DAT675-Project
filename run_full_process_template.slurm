@@ -7,7 +7,7 @@
 ##SBATCH -C NOGPU
 #SBATCH --gpus-per-node=A100:1
 #SBATCH --cpus-per-task=16
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --output=slurm_topology_%j.out
 
 cutoff=XXXTOPOLOGYCUTOFFXXX
@@ -25,7 +25,7 @@ CONTAINER="${SLURM_SUBMIT_DIR}/aev-plig.sif"
 cd $SLURM_SUBMIT_DIR
 
 # Ensure output directory exists before training
-mkdir -p output_cutoff_$cutoff}_models
+mkdir -p output_cutoff_${cutoff}_models
 
 # Extract WANDB_API_KEY from .env
 if [ -f ".env" ]; then
@@ -41,32 +41,6 @@ export WANDB_CACHE_DIR="${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}/wandb_cache"
 export WANDB_CONFIG_DIR="${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}/wandb_config"
 
 mkdir -p $WANDB_DIR $WANDB_CACHE_DIR $WANDB_CONFIG_DIR
-
-# Generate networks
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Finished all graphs"
-echo "========================================"
-
-echo "========================================"
-echo "Generating PyTorch Data"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generat_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
-
 
 # Run the training script via the apptainer container
 # Binding the project directory is required for file access

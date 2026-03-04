@@ -231,6 +231,7 @@ parser.add_argument("--topology-cutoff", type=float, required=True, help="Radius
 parser.add_argument("--outdir", type=str, required=True)
 args = parser.parse_args()
 topology_cutoff = args.topology_cutoff
+outdir = args.outdir
 
 """
 Load data

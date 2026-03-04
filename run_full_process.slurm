@@ -10,7 +10,7 @@
 #SBATCH --time=24:00:00
 #SBATCH --output=slurm_topology_%j.out
 
-cutoff=3
+cutoff=4
 
 echo "========================================"
 echo "Training AEV-PLIG Model"
@@ -42,31 +42,31 @@ export WANDB_CONFIG_DIR="${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}/wandb_config
 
 mkdir -p $WANDB_DIR $WANDB_CACHE_DIR $WANDB_CONFIG_DIR
 
-# Generate networks
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Finished all graphs"
-echo "========================================"
-
-echo "========================================"
-echo "Generating PyTorch Data"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generat_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
-
+## Generate networks
+#echo "========================================"
+#echo "Generating bindingnet graphs"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+#
+#echo "========================================"
+#echo "Generating bindingnet graphs"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+#
+#echo "========================================"
+#echo "Generating bindingnet graphs"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+#
+#echo "========================================"
+#echo "Finished all graphs"
+#echo "========================================"
+#
+#echo "========================================"
+#echo "Generating PyTorch Data"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generat_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
+#
 
 # Run the training script via the apptainer container
 # Binding the project directory is required for file access
