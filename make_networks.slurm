@@ -13,27 +13,27 @@
 CONTAINER="${SLURM_SUBMIT_DIR}/aev-plig.sif"
 cutoff=4
 
-# Generate networks
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Generating bindingnet graphs"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-
-echo "========================================"
-echo "Finished all graphs"
-echo "========================================"
-
-echo "========================================"
-echo "Generating PyTorch Data"
-echo "========================================"
-apptainer exec --nv "$CONTAINER" python generate_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
+## Generate networks
+#echo "========================================"
+#echo "Generating bindingnet graphs"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+#
+#echo "========================================"
+#echo "Generating bindingnet graphs"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+#
+#echo "========================================"
+#echo "Generating bindingnet graphs"
+#echo "========================================"
+#apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+#
+#echo "========================================"
+#echo "Finished all graphs"
+#echo "========================================"
+#
+#echo "========================================"
+#echo "Generating PyTorch Data"
+#echo "========================================"
+apptainer exec --nv "$CONTAINER" python create_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
