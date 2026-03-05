@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 from rdkit import Chem
 import argparse
+from scipy.spatial.distance import cdist
 
 def elements_to_atomicnums(elements):
     atomicnums = np.zeros(len(elements), dtype=int)
@@ -122,48 +123,48 @@ def GetMolAEVs_extended(protein_path, mol, atom_keys, radial_coefs, atom_map):
 
 
 def GetMolAEVs_extended_binary(protein_path, mol, atom_keys, radial_coefs, atom_map):
-    # Protein and ligand structure are loaded as pandas DataFrame
     Target = LoadPDBasDF(protein_path, atom_keys)
     Ligand = LoadMolasDF(mol)
     
-    # Only need radial cutoff for binary encoding
+    # Extract the radial cutoff distance
     RcR = radial_coefs[0] 
 
-    # Reduce size of Target df to what we need based on radial cutoff RcR
+    # Filter the protein DataFrame to a bounding box around the ligand, 
+    # padded by the radial cutoff to minimize downstream distance computations
     distance_cutoff = RcR + 0.1
     
     for i in ["X","Y","Z"]:
         Target = Target[Target[i] < float(Ligand[i].max())+distance_cutoff]
         Target = Target[Target[i] > float(Ligand[i].min())-distance_cutoff]
     
-    Target = Target.merge(atom_map, on='ATOM_TYPE', how='left')
+    atom_type_to_nr = dict(zip(atom_map['ATOM_TYPE'], atom_map['ATOM_NR']))
+    Target['ATOM_NR'] = Target['ATOM_TYPE'].map(atom_type_to_nr)
     
     n_atom_types = len(atom_map)
     n_ligand_atoms = len(Ligand)
     
     # Get protein atom coordinates and their type indices
-    protein_coords = Target[['X','Y','Z']].to_numpy()        # shape: [n_protein_atoms, 3]
-    protein_type_indices = Target['ATOM_NR'].to_numpy() - 1  # shape: [n_protein_atoms], 0-indexed
+    protein_coords = Target[['X','Y','Z']].to_numpy()
+    protein_type_indices = Target['ATOM_NR'].to_numpy() - 1
     
-    ligand_coords = Ligand[['X','Y','Z']].to_numpy()         # shape: [n_ligand_atoms, 3]
+    ligand_coords = Ligand[['X','Y','Z']].to_numpy()
+    
+    if len(protein_coords) > 0 and len(ligand_coords) > 0:
+        distances = cdist(ligand_coords, protein_coords)
+    else:
+        distances = np.zeros((n_ligand_atoms, 0))
     
     # For each ligand atom, compute binary vector over protein atom types
     binary_aevs = np.zeros((n_ligand_atoms, n_atom_types), dtype=np.float32)
     
-    for i, lig_pos in enumerate(ligand_coords):
-        # Compute distances from this ligand atom to all protein atoms
-        diffs = protein_coords - lig_pos                     # shape: [n_protein_atoms, 3]
-        distances = np.linalg.norm(diffs, axis=1)            # shape: [n_protein_atoms]
-        
-        # Find protein atoms within cutoff
-        within_cutoff = distances <= RcR                     # boolean mask
-        
-        # For each protein atom type within cutoff, set the bit to 1
-        types_within_cutoff = protein_type_indices[within_cutoff]
-        
-        # Filter out NaN type indices (unsupported atom types)
-        valid_types = types_within_cutoff[~np.isnan(types_within_cutoff)].astype(int)
-        binary_aevs[i, valid_types] = 1.0
+    valid_mask = ~np.isnan(protein_type_indices)
+    distances = distances[:, valid_mask]
+    valid_types = protein_type_indices[valid_mask].astype(int)
+    
+    for i in range(n_ligand_atoms):
+        within_cutoff = distances[i] <= RcR
+        types_within_cutoff = valid_types[within_cutoff]
+        binary_aevs[i, types_within_cutoff] = 1.0
     
     binary_aevs_tensor = torch.tensor(binary_aevs)
     
@@ -171,59 +172,57 @@ def GetMolAEVs_extended_binary(protein_path, mol, atom_keys, radial_coefs, atom_
 
 
 def GetMolAEVs_extended_distbinned(protein_path, mol, atom_keys, radial_coefs, atom_map, distance_shells=[2.0, 3.5, 5.1]):
-    # Protein and ligand structure are loaded as pandas DataFrame
     Target = LoadPDBasDF(protein_path, atom_keys)
     Ligand = LoadMolasDF(mol)
     
-    # Only need radial cutoff for distance-binned encoding
+    # Extract the radial cutoff distance
     RcR = radial_coefs[0] 
 
-    # Reduce size of Target df to what we need based on radial cutoff RcR
+    # Filter the protein DataFrame to a bounding box around the ligand, 
+    # padded by the radial cutoff to minimize downstream distance computations
     distance_cutoff = RcR + 0.1
     for i in ["X","Y","Z"]:
         Target = Target[Target[i] < float(Ligand[i].max())+distance_cutoff]
         Target = Target[Target[i] > float(Ligand[i].min())-distance_cutoff]
     
-    Target = Target.merge(atom_map, on='ATOM_TYPE', how='left')
+    atom_type_to_nr = dict(zip(atom_map['ATOM_TYPE'], atom_map['ATOM_NR']))
+    Target['ATOM_NR'] = Target['ATOM_TYPE'].map(atom_type_to_nr)
     
     n_atom_types = len(atom_map)
     n_ligand_atoms = len(Ligand)
-    n_shells = len(distance_shells)  # e.g. 3 shells = 3 distance ranges
+    n_shells = len(distance_shells)
     
     # Get protein atom coordinates and their type indices
-    protein_coords = Target[['X','Y','Z']].to_numpy()        # shape: [n_protein_atoms, 3]
-    protein_type_indices = Target['ATOM_NR'].to_numpy() - 1  # shape: [n_protein_atoms], 0-indexed
+    protein_coords = Target[['X','Y','Z']].to_numpy()
+    protein_type_indices = Target['ATOM_NR'].to_numpy() - 1
     
-    ligand_coords = Ligand[['X','Y','Z']].to_numpy()         # shape: [n_ligand_atoms, 3]
+    ligand_coords = Ligand[['X','Y','Z']].to_numpy()
+    
+    if len(protein_coords) > 0 and len(ligand_coords) > 0:
+        distances = cdist(ligand_coords, protein_coords)
+    else:
+        distances = np.zeros((n_ligand_atoms, 0))
+        
+    valid_mask = ~np.isnan(protein_type_indices)
+    distances = distances[:, valid_mask]
+    valid_types = protein_type_indices[valid_mask].astype(int)
     
     # For each ligand atom: n_shells counts per atom type
     distbinned_aevs = np.zeros((n_ligand_atoms, n_shells * n_atom_types), dtype=np.float32)
     
-    for i, lig_pos in enumerate(ligand_coords):
-        # Compute distances from this ligand atom to all protein atoms
-        diffs = protein_coords - lig_pos                     # shape: [n_protein_atoms, 3]
-        distances = np.linalg.norm(diffs, axis=1)            # shape: [n_protein_atoms]
+    for i in range(n_ligand_atoms):
+        dists = distances[i]
         
-        # Filter out NaN type indices (unsupported atom types)
-        valid_mask = ~np.isnan(protein_type_indices)
-        valid_distances = distances[valid_mask]
-        valid_types = protein_type_indices[valid_mask].astype(int)
-        
-        # Loop over shells
         shell_start = 0.0
         for shell_idx, shell_end in enumerate(distance_shells):
-            # Boolean mask for atoms in this shell
-            in_shell = (valid_distances > shell_start) & (valid_distances <= shell_end)
-            
-            # Get atom types within this shell
+            in_shell = (dists > shell_start) & (dists <= shell_end)
             types_in_shell = valid_types[in_shell]
             
-            # Count occurrences of each atom type in this shell
-            # Each atom type gets its own column offset by shell_idx * n_atom_types
-            for atom_type in types_in_shell:
-                distbinned_aevs[i, shell_idx * n_atom_types + atom_type] += 1.0
+            if len(types_in_shell) > 0:
+                counts = np.bincount(types_in_shell, minlength=n_atom_types)
+                distbinned_aevs[i, shell_idx * n_atom_types : (shell_idx + 1) * n_atom_types] = counts[:n_atom_types]
             
-            shell_start = shell_end  # next shell starts where this one ended
+            shell_start = shell_end
     
     distbinned_aevs_tensor = torch.tensor(distbinned_aevs)
     
@@ -349,7 +348,7 @@ EtaR = torch.tensor([19.7]) # Radial decay
 
 # ------------------------------------------------------------------------
 if tag == 'reduced-gaussian-4':
-    RsR = torch.tensor([0.80, 1.94, 3.08, 4.83]) # 4 shifts
+    RsR = torch.tensor([0.80, 2.14, 3.49, 4.83]) # 4 shifts evenly spaced
 elif tag == 'reduced-gaussian-8':
     RsR = torch.tensor([0.80, 1.38, 1.95, 2.53, 3.10, 3.68, 4.25, 4.83]) # 8 shifts
 else:
@@ -379,6 +378,7 @@ for index, row in tqdm(df.iterrows()):
     mol_graphs[row["unique_id"]] = graph
 
 #save the graphs to use as input for the GNN models
-output_file_graphs = "data/bindingdb.pickle"
+suffix = f"_{tag}" if tag != "original" else ""
+output_file_graphs = f"data/bindingdb{suffix}.pickle"
 with open(output_file_graphs, 'wb') as handle:
     pickle.dump(mol_graphs, handle, protocol=pickle.HIGHEST_PROTOCOL)

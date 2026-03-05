@@ -25,21 +25,25 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--skip_exclusion', action='store_true',
                         help='Skip benchmark exclusion')
+    parser.add_argument('--tag', type=str, default='original', choices=['binary', 'distance-binned', 'reduced-gaussian-4', 'reduced-gaussian-8', 'original'], help='Encoding scheme used for AEVs')
     args = parser.parse_args()
+    
+    tag = args.tag
+    suffix = f"_{tag}" if tag != "original" else ""
 
     """
     Load graphs
     """
-    print("loading graph from pickle file for pdbbind2020")
-    with open("data/pdbbind.pickle", 'rb') as handle:
+    print(f"loading graph from pickle file for pdbbind2020 with tag {tag}")
+    with open(f"data/pdbbind{suffix}.pickle", 'rb') as handle:
         pdbbind_graphs = pickle.load(handle)
 
-    print("loading graph from pickle file for BindingNet")
-    with open("data/bindingnet.pickle", 'rb') as handle:
+    print(f"loading graph from pickle file for BindingNet with tag {tag}")
+    with open(f"data/bindingnet{suffix}.pickle", 'rb') as handle:
         bindingnet_graphs = pickle.load(handle)
 
-    print("loading graph from pickle file for BindingDB")
-    with open("data/bindingdb.pickle", 'rb') as handle:
+    print(f"loading graph from pickle file for BindingDB with tag {tag}")
+    with open(f"data/bindingdb{suffix}.pickle", 'rb') as handle:
         bindingdb_graphs = pickle.load(handle)
 
     graphs_dict = {**pdbbind_graphs, **bindingnet_graphs, **bindingdb_graphs}
@@ -96,7 +100,7 @@ def main():
     print(f"\nFinal split counts:")
     print(data[['split']].value_counts())
 
-    dataset = 'pdbbind_U_bindingnet_U_bindingdb_ligsim90_fep_benchmark'
+    dataset = f'pdbbind_U_bindingnet_U_bindingdb_ligsim90_fep_benchmark{suffix}'
 
     df = data[data['split'] == 'train']
     train_ids, train_y = list(df['unique_id']), list(df['pK'])
