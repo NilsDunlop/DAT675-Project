@@ -11,10 +11,14 @@ data/bindingnet/
 data/bindingdb/
 data/CASF-2016/
 
+# Evaluate intermediates
+evaluate/**/*_processed.csv
+
 # Generated data artifacts
 *.pickle
 data/processed/
 data/*_processed.csv
+data/authors_baseline/
 
 # Compressed archives
 *.tar.gz

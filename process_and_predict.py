@@ -29,6 +29,24 @@ warnings.filterwarnings("ignore", message="Dependency not satisfied, torchani.da
 import torchani
 import torchani_mod
 
+
+def load_molecule(sdf_path, use_mol2=False, mol2_path=None):
+    """Load a molecule from either .sdf or .mol2 file.
+    
+    When use_mol2=True, loads from mol2_path using MolFromMol2File + AddHs,
+    matching generate_pdbbind_graphs.py. This avoids RDKit sanitization/valence
+    errors that occur with some .sdf files.
+    """
+    if use_mol2:
+        mol = Chem.MolFromMol2File(mol2_path)
+        if mol is not None:
+            mol = Chem.AddHs(mol, addCoords=True)
+        return mol
+    else:
+        suppl = Chem.SDMolSupplier(sdf_path, removeHs=False)
+        assert(len(suppl) == 1)
+        return suppl[0]
+
 def elements_to_atomicnums(elements):
     atomicnums = np.zeros(len(elements), dtype=int)
 
@@ -298,9 +316,7 @@ def process_data(config):
     non_readable = []
     rare_atoms_ids = []
     for index, row in tqdm(df.iterrows(), total=df.shape[0]):
-        suppl = Chem.SDMolSupplier(row["sdf_file"], removeHs=False)
-        assert(len(suppl) == 1)
-        lig = suppl[0]
+        lig = load_molecule(row["sdf_file"], use_mol2=config.use_mol2, mol2_path=row.get("mol2_file"))
         if lig is None:
             non_readable.append(row["unique_id"])
         else:
@@ -351,8 +367,7 @@ def process_data(config):
     print("Analyse atom features\n")
     features = []
     for index, row in tqdm(df.iterrows(), total=df.shape[0]):
-        suppl = Chem.SDMolSupplier(row["sdf_file"], removeHs=False)
-        lig = suppl[0]
+        lig = load_molecule(row["sdf_file"], use_mol2=config.use_mol2, mol2_path=row.get("mol2_file"))
         for atom in lig.GetAtoms():
             if atom.GetSymbol() != "H":
                 feature = []
@@ -393,8 +408,7 @@ def process_data(config):
     bond_types = []
     unspecified_bond_mol = []
     for index, row in tqdm(df.iterrows(), total=df.shape[0]):
-        suppl = Chem.SDMolSupplier(row["sdf_file"], removeHs=False)
-        lig = suppl[0]
+        lig = load_molecule(row["sdf_file"], use_mol2=config.use_mol2, mol2_path=row.get("mol2_file"))
 
         heavy_atom_index = []
         idx_to_idx = {}
@@ -436,8 +450,9 @@ def process_single_graph(row_dict, atom_keys, radial_coefs, atom_map):
     sdf_file = row_dict["sdf_file"]
     pdb_file = row_dict["pdb_file"]
     unique_id = row_dict["unique_id"]
-    suppl = Chem.SDMolSupplier(sdf_file, removeHs=False)
-    lig = suppl[0]
+    use_mol2 = row_dict.get("_use_mol2", False)
+    mol2_file = row_dict.get("mol2_file")
+    lig = load_molecule(sdf_file, use_mol2=use_mol2, mol2_path=mol2_file)
     mol_df, aevs = GetMolAEVs_extended(pdb_file, lig, atom_keys, radial_coefs, atom_map)
     graph = mol_to_graph(lig, mol_df, aevs)
     return unique_id, graph
@@ -468,6 +483,9 @@ def generate_graphs(config):
 
     mol_graphs = {}
     rows = [row.to_dict() for index, row in df.iterrows()]
+    # Pass use_mol2 flag to each worker via row dict
+    for row in rows:
+        row["_use_mol2"] = config.use_mol2
     num_workers = config.num_workers
     
     print(f"Using {num_workers} workers for graph generation.")
@@ -567,6 +585,7 @@ def parse_args():
     parser.add_argument('--num_workers', type=int, default=0, help='Number of workers for graph generation')
     parser.add_argument('--device', type=str, default='auto', help='Device for computation: "auto" (use CUDA if available), "cpu" (force CPU), or a specific CUDA device index (e.g., "0").')
     parser.add_argument('--skip_validation', action='store_true',help='Bypass Biopandas validation of protein structures.')
+    parser.add_argument('--use_mol2', action='store_true', help='Load ligands from .mol2 files instead of .sdf (matches generate_pdbbind_graphs.py, avoids valence errors).')
     
     args = parser.parse_args()
     return args
