@@ -15,11 +15,11 @@ def init_weights(layer):
 
 class GraphDataset(InMemoryDataset):
 
-    def __init__(self, root='data', dataset=None, subdir="processed",
+    def __init__(self, root='data', dataset=None, outdir="processed",
                  ids=None, y=None, graphs_dict=None, y_scaler=None):
 
         self.dataset = dataset
-        self.subdir = subdir   # MUST be before super()
+        self.outdir = outdir   # MUST be before super()
 
         super(GraphDataset, self).__init__(root)
 
@@ -50,7 +50,7 @@ class GraphDataset(InMemoryDataset):
 
     @property
     def processed_dir(self):
-        return os.path.join(self.root, self.subdir)
+        return os.path.join(self.root, self.outdir)
 
 
     @property

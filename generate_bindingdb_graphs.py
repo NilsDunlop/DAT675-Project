@@ -269,7 +269,7 @@ for index, row in tqdm(df.iterrows()):
     mol_graphs[row["unique_id"]] = graph
 
 #save the graphs to use as input for the GNN models
-output_file_graphs = "data/" + outdir + "bindingdb.pickle"
+output_file_graphs = "data/" + outdir + "/bindingdb.pickle"
 Path("data/" + outdir).mkdir(parents=True, exist_ok=True)
 with open(output_file_graphs, 'wb') as handle:
     pickle.dump(mol_graphs, handle, protocol=pickle.HIGHEST_PROTOCOL)

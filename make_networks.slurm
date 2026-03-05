@@ -7,7 +7,7 @@
 #SBATCH -C NOGPU
 ##SBATCH --gpus-per-node=A100:1
 #SBATCH --cpus-per-task=16
-#SBATCH --time=02:00:00
+#SBATCH --time=04:00:00
 #SBATCH --output=slurm_make_networks_%j.out
 
 CONTAINER="${SLURM_SUBMIT_DIR}/aev-plig.sif"
@@ -20,20 +20,20 @@ cutoff=4
 #apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
 #
 #echo "========================================"
-#echo "Generating bindingnet graphs"
+#echo "Generating bindingdb graphs"
 #echo "========================================"
 #apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
 #
 #echo "========================================"
-#echo "Generating bindingnet graphs"
+#echo "Generating pdbbind graphs"
 #echo "========================================"
 #apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
 #
 #echo "========================================"
 #echo "Finished all graphs"
 #echo "========================================"
-#
-#echo "========================================"
-#echo "Generating PyTorch Data"
-#echo "========================================"
+
+echo "========================================"
+echo "Generating PyTorch Data"
+echo "========================================"
 apptainer exec --nv "$CONTAINER" python create_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
