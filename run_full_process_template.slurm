@@ -10,7 +10,7 @@
 #SBATCH --time=48:00:00
 #SBATCH --output=slurm_topology_%j.out
 
-cutoff=XXXTOPOLOGYCUTOFFXXX
+cutoff=XXXCUTOFFXXX
 
 echo "========================================"
 echo "Training AEV-PLIG Model"

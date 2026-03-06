@@ -11,29 +11,35 @@
 #SBATCH --output=slurm_make_networks_%j.out
 
 CONTAINER="${SLURM_SUBMIT_DIR}/aev-plig.sif"
-cutoff=4
+cutoff=1
 
-## Generate networks
-#echo "========================================"
-#echo "Generating bindingnet graphs"
-#echo "========================================"
-#apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-#
-#echo "========================================"
-#echo "Generating bindingdb graphs"
-#echo "========================================"
-#apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-#
-#echo "========================================"
-#echo "Generating pdbbind graphs"
-#echo "========================================"
-#apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
-#
-#echo "========================================"
-#echo "Finished all graphs"
-#echo "========================================"
+# Generate networks
+echo "========================================"
+echo "Generating bindingnet graphs"
+echo "========================================"
+apptainer exec --nv "$CONTAINER" python generate_bindingnet_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+
+echo "========================================"
+echo "Generating bindingdb graphs"
+echo "========================================"
+apptainer exec --nv "$CONTAINER" python generate_bindingdb_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+
+echo "========================================"
+echo "Generating pdbbind graphs"
+echo "========================================"
+apptainer exec --nv "$CONTAINER" python generate_pdbbind_graphs.py --topology-cutoff ${cutoff} --outdir topology_${cutoff}
+
+echo "========================================"
+echo "Finished all graphs"
+echo "========================================"
 
 echo "========================================"
 echo "Generating PyTorch Data"
 echo "========================================"
 apptainer exec --nv "$CONTAINER" python create_pytorch_data.py --outdir topology_${cutoff}_processed --input topology_${cutoff}
+
+
+cp run_full_process_template.slurm run_full_process_${cutoff}.slurm
+sed -i "s/XXXCUTOFFXXX/${cutoff}/g"  run_full_process_${cutoff}.slurm
+sbatch run_full_process_${cutoff}.slurm
+rm run_full_process_${cutoff}.slurm

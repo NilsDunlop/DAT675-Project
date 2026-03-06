@@ -8,10 +8,15 @@ data/bindingdb
 # SLURM output logs
 slurm_*.out
 
+#other ouputs
+output
+output*
+
 # Generated data artifacts
 *.pickle
 data/processed/
 data/*_processed.csv
+data
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
