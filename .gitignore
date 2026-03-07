@@ -10,6 +10,7 @@ data/pdbbind/
 data/bindingnet/
 data/bindingdb/
 data/CASF-2016/
+data
 
 # Evaluate intermediates
 evaluate/**/*_processed.csv
