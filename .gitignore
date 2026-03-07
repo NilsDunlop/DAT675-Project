@@ -2,7 +2,6 @@
 *.sif
 
 # SLURM
-slurm_*.out
 slurm/
 
 # Large training data directories
@@ -10,16 +9,16 @@ data/pdbbind/
 data/bindingnet/
 data/bindingdb/
 data/CASF-2016/
-data
+data/fep/
+data/processed/
+data/*_processed.csv
 
 # Evaluate intermediates
 evaluate/**/*_processed.csv
 
 # Generated data artifacts
 *.pickle
-data/processed/
-data/*_processed.csv
-data/authors_baseline/
+*.pt
 
 # Compressed archives
 *.tar.gz
@@ -111,11 +110,12 @@ wandb_logs/
 wandb_cache/
 wandb_config/
 
-# Output Models and Data
-output/
-*.pickle
+# Trained models
+output/trained_models/
 *.model
 
+
+# Swap files
 *.swp
 *.swo
 *~
