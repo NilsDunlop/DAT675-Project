@@ -764,9 +764,12 @@ def parse_args():
     parser.add_argument('--device', type=str, default='auto', help='Device for computation: "auto" (use CUDA if available), "cpu" (force CPU), or a specific CUDA device index (e.g., "0").')
     parser.add_argument('--skip_validation', action='store_true',help='Bypass Biopandas validation of protein structures.')
     parser.add_argument('--use_mol2', action='store_true', help='Load ligands from .mol2 files instead of .sdf (matches generate_pdbbind_graphs.py, avoids valence errors).')
+<<<<<<< HEAD
     parser.add_argument('--tag', type=str, default='original', choices=['binary', 'distance-binned', 'reduced-gaussian-4', 'reduced-gaussian-8', 'original'], help='Encoding scheme to use for AEVs')
     parser.add_argument('--topology', type=str, default='original', choices=['distance', 'knn', 'original'], help='Encoding scheme to use for AEVs')
     parser.add_argument('--topology-cutoff', type=float, default=3, help='cutoff radius for distance-based topology generation')
+=======
+>>>>>>> fa15efa398901dc910f8f4ed7c0aca4ddc772e26
     
     args = parser.parse_args()
     return args

@@ -11,6 +11,7 @@ import pandas as pd
 import argparse
 import numpy as np
 import pickle
+import wandb
 
 def predict(model, device, loader, y_scaler=None):
     model.eval()
@@ -56,7 +57,7 @@ def _train(model, device, loss_fn, train_loader, valid_loader, optimizer, n_epoc
     pcs = []
     for epoch in range(n_epochs):
     
-        _ = train(model, device, train_loader, optimizer, epoch + 1, loss_fn)
+        train_loss = train(model, device, train_loader, optimizer, epoch + 1, loss_fn)
         
         G, P = predict(model, device, valid_loader, y_scaler)
 
@@ -70,6 +71,7 @@ def _train(model, device, loss_fn, train_loader, valid_loader, optimizer, n_epoc
             best_pc = avg_pc  
             
         print('The current validation set Pearson correlation:', current_pc)
+        wandb.log({"epoch": epoch+1, "train_loss": train_loss, "val_pearson": current_pc, "best_val_pearson": best_pc})
     return
 
 def parse_args():
@@ -113,6 +115,7 @@ def train_NN(args):
     seeds = [100, 123, 15, 257, 2, 2012, 3752, 350, 843, 621]
     seeds = [100, 123, 15, 257, 2 ]
     for i,seed in enumerate(seeds):
+        wandb.init(project="AEV-PLIG", group=timestr, name=f"{model_st}_{dataset}_seed_{seed}", config=vars(args), reinit=True)
         random.seed(seed)
         torch.manual_seed(int(seed))
         
@@ -151,6 +154,7 @@ def train_NN(args):
         
         col = 'preds_' + str(i)
         df_test[col] = P_test
+        wandb.finish()
     
     df_test['preds'] = df_test.iloc[:,1:].mean(axis=1)
     model_pickle_name = timestr + '_model_' + model_st + '_' + dataset + '.pickle'

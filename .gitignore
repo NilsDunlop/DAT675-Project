@@ -5,8 +5,18 @@ data/bindingdb
 # Apptainer / Singularity containers
 *.sif
 
-# SLURM output logs
+# SLURM
 slurm_*.out
+slurm/
+
+# Large training data directories
+data/pdbbind/
+data/bindingnet/
+data/bindingdb/
+data/CASF-2016/
+
+# Evaluate intermediates
+evaluate/**/*_processed.csv
 
 #other ouputs
 output
@@ -17,6 +27,10 @@ output*
 data/processed/
 data/*_processed.csv
 data
+
+# Compressed archives
+*.tar.gz
+*.tar
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -97,6 +111,18 @@ ipython_config.py
 # IDE
 .vscode/
 .idea/
+
+# Weights & Biases
+wandb/
+wandb_logs/
+wandb_cache/
+wandb_config/
+
+# Output Models and Data
+output/
+*.pickle
+*.model
+
 *.swp
 *.swo
 *~

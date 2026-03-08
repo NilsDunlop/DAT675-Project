@@ -21,7 +21,7 @@ From: continuumio/miniconda3:23.10.0-1
     pip install pandas numpy scipy scikit-learn
 
     # ── Utilities ──
-    pip install tqdm psutil
+    pip install tqdm psutil wandb
 
     conda clean --all -y
     pip cache purge
