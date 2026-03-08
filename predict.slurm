@@ -7,10 +7,8 @@
 ##SBATCH -C NOGPU
 #SBATCH --gpus-per-node=A100:1
 #SBATCH --cpus-per-task=16
-#SBATCH --time=48:00:00
-#SBATCH --output=slurm_topology_%j.out
-
-cutoff=XXXCUTOFFXXX
+#SBATCH --time=24:00:00
+#SBATCH --output=slurm_predict_%j.out
 
 echo "========================================"
 echo "Training AEV-PLIG Model"
@@ -18,14 +16,13 @@ echo "Job ID: $SLURM_JOB_ID"
 echo "Started: $(date)"
 echo "CPUs: $SLURM_CPUS_PER_TASK"
 echo "GPUs: $SLURM_GPUS on $(hostname)"
-echo "topology-cutoff: ${cutoff}"
 echo "========================================"
-CONTAINER="${SLURM_SUBMIT_DIR}/aev-plig.sif"
 
+cutoff=4
 cd $SLURM_SUBMIT_DIR
 
 # Ensure output directory exists before training
-mkdir -p output_cutoff_${cutoff}_model
+#mkdir -p prediction_topology_${cutoff}/trained_models
 
 # Extract WANDB_API_KEY from .env
 if [ -f ".env" ]; then
@@ -35,10 +32,9 @@ else
 fi
 
 # Configure WandB specific settings for HPC
-mkdir "${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}"
-export WANDB_DIR="${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}/wandb_logs"
-export WANDB_CACHE_DIR="${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}/wandb_cache"
-export WANDB_CONFIG_DIR="${SLURM_SUBMIT_DIR}/wandb/cutoff_${cutoff}/wandb_config"
+export WANDB_DIR="${SLURM_SUBMIT_DIR}/wandb_logs"
+export WANDB_CACHE_DIR="${SLURM_SUBMIT_DIR}/wandb_cache"
+export WANDB_CONFIG_DIR="${SLURM_SUBMIT_DIR}/wandb_config"
 
 mkdir -p $WANDB_DIR $WANDB_CACHE_DIR $WANDB_CONFIG_DIR
 
@@ -53,18 +49,14 @@ apptainer exec \
     --env WANDB_DIR="$WANDB_DIR" \
     --env WANDB_CACHE_DIR="$WANDB_CACHE_DIR" \
     --env WANDB_CONFIG_DIR="$WANDB_CONFIG_DIR" \
-    $CONTAINER \
-    python training.py \
-    --activation_function=leaky_relu \
-    --batch_size=128 \
-    --dataset=pdbbind_U_bindingnet_U_bindingdb_ligsim90_fep_benchmark \
-    --epochs=200 \
-    --head=3 \
-    --hidden_dim=256 \
-    --lr=0.00012 \
-    --model=GATv2Net \
-    --input=topology_${cutoff}_processed\
-    --output=output_cutoff_${cutoff}_model
+    aev-plig.sif \
+    python process_and_predict.py \
+    --trained_model_name=output_cutoff_${cutoff}_model/trained_models/20260307-205328_model_GATv2Net_pdbbind_U_bindingnet_U_bindingdb_ligsim90_fep_benchmark \
+    --dataset_csv=evaluate/0ligandbias/zero_ligand_bias_test.csv \
+    --data_name=topology_${cutoff}_0ligand \
+    --tag=original \
+    --topology=distance \
+    --top_cutoff=${cutoff}
 
 echo "========================================"
 echo "Completed: $(date)"

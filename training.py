@@ -111,6 +111,7 @@ def train_NN(args):
     test_data = GraphDataset(root='data',  outdir=input_dir, dataset=dataset+'_test', y_scaler=train_data.y_scaler)
 
     seeds = [100, 123, 15, 257, 2, 2012, 3752, 350, 843, 621]
+    seeds = [100, 123, 15, 257, 2 ]
     for i,seed in enumerate(seeds):
         random.seed(seed)
         torch.manual_seed(int(seed))
@@ -152,8 +153,8 @@ def train_NN(args):
         df_test[col] = P_test
     
     df_test['preds'] = df_test.iloc[:,1:].mean(axis=1)
-
-    scaler_file = timestr + '_model_' + model_st + '_' + dataset + '.pickle'
+    model_pickle_name = timestr + '_model_' + model_st + '_' + dataset + '.pickle'
+    scaler_file = os.path.join(model_output_dir, model_pickle_name) 
     with open(scaler_file,'wb') as f:
         pickle.dump(train_data.y_scaler, f)
     
