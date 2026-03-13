@@ -310,7 +310,7 @@ for index, row in tqdm(df.iterrows()):
     protein_path = folder + f"{pdb}/rec_h_opt.pdb"
 
     mol_df, aevs = GetMolAEVs_extended(protein_path, lig, atom_keys, radial_coefs, atom_map)
-    graph = mol_to_graph(lig, mol_df, aevs)
+    graph = mol_to_graph(lig, mol_df, aevs, topology_cutoff=topology_cutoff)
     mol_graphs[unique_identify] = graph
 
 #save the graphs to use as input for the GNN models

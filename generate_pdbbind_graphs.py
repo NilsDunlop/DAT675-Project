@@ -279,7 +279,7 @@ for i, pdb in tqdm(enumerate(data["PDB_code"])):
         protein_path = os.path.join(folder, pdb, f'{pdb}_protein.pdb')
         
         mol_df, aevs = GetMolAEVs_extended(protein_path, mol, atom_keys, radial_coefs, atom_map)
-        graph = mol_to_graph(mol, mol_df, aevs)
+        graph = mol_to_graph(mol, mol_df, aevs, topology_cutoff=topology_cutoff)
         mol_graphs[pdb] = graph
         
 

@@ -18,9 +18,8 @@ data/CASF-2016/
 # Evaluate intermediates
 evaluate/**/*_processed.csv
 
-#other ouputs
-output
-output*
+#Model outputs
+output/trained_models/
 
 # Generated data artifacts
 *.pickle
