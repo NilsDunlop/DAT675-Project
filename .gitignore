@@ -118,7 +118,6 @@ wandb_cache/
 wandb_config/
 
 # Output Models and Data
-output/
 *.pickle
 *.model
 
