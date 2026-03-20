@@ -1,4 +1,5 @@
 import pandas as pd
+from pathlib import Path
 import pickle
 import torch
 import torchani
@@ -9,6 +10,7 @@ from tqdm import tqdm
 from rdkit import Chem
 import argparse
 from scipy.spatial.distance import cdist
+import scipy
 
 def elements_to_atomicnums(elements):
     atomicnums = np.zeros(len(elements), dtype=int)
@@ -274,7 +276,60 @@ def atom_features(atom, features=["atom_symbol",
     return np.array(feature_list)
 
 
-def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
+def mol_to_graph(mol, mol_df, aevs, topology_cutoff=5.0, extra_features=["atom_symbol",
+                                                    "num_heavy_atoms",
+                                                    "total_num_Hs",
+                                                    "explicit_valence",
+                                                    "is_aromatic",
+                                                    "is_in_ring"]):
+
+    features = []
+    heavy_atom_index = []
+    idx_to_idx = {}
+    coords = []
+    counter = 0
+
+    # Generate nodes
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() != "H": # Include only non-hydrogen atoms
+            idx_to_idx[atom.GetIdx()] = counter
+            aev_idx = mol_df[mol_df['ATOM_INDEX'] == atom.GetIdx()].index
+            heavy_atom_index.append(atom.GetIdx())
+            feature = np.append(atom_features(atom), aevs[aev_idx,:])
+            features.append(feature)
+
+            pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
+            coords.append([pos.x, pos.y, pos.z])
+
+            counter += 1
+
+    coords = np.array(coords)
+    n_atoms = len(coords)
+
+    #Generate edges
+    edges = []
+
+    dist_matrix = scipy.spatial.distance.cdist(coords, coords)
+
+    for i in range(n_atoms):
+        neighbors = np.where(dist_matrix[i] <= topology_cutoff)[0]
+
+        for j in neighbors:
+            if i != j:
+                edge = [i, j, dist_matrix[i,j]]
+                edges.append(edge)
+
+    df = pd.DataFrame(edges, columns=['atom1', 'atom2', 'distance'])
+    df = df.sort_values(by=['atom1','atom2'])
+
+    edge_index = df[['atom1','atom2']].to_numpy().tolist()
+    edge_attr = df[['distance']].to_numpy().tolist()
+
+
+    return len(mol_df), features, edge_index, edge_attr
+
+
+def mol_to_graph_old(mol, mol_df, aevs, extra_features=["atom_symbol",
                                                     "num_heavy_atoms", 
                                                     "total_num_Hs", 
                                                     "explicit_valence",
@@ -321,17 +376,24 @@ def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
     return len(mol_df), features, edge_index, edge_attr
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--topology-cutoff", type=float, required=True, help="Radius cutoff for topology graph")
+parser.add_argument("--outdir", type=str, required=True)
+parser.add_argument('--encoding', type=str, default='original',
+                    choices=['binary', 'distance-binned', 'reduced-gaussian-4',
+                             'reduced-gaussian-8', 'original'],
+                    help='Encoding scheme to use for AEVs')
+args = parser.parse_args()
+topology_cutoff = args.topology_cutoff
+outdir = args.outdir
+encoding = args.encoding
+print(f"Using encoding scheme: {encoding}")
+
 """
 Load data
 """
 df = pd.read_csv("data/bindingnet_processed.csv", index_col=0)
 folder =  "data/bindingnet/from_chembl_client/"
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--tag', type=str, default='original', choices=['binary', 'distance-binned', 'reduced-gaussian-4', 'reduced-gaussian-8', 'original'], help='Encoding scheme to use for AEVs')
-args = parser.parse_args()
-tag = args.tag
-print(f"Using encoding scheme: {tag}")
 
 """
 Generate for all complexes: ANI-2x with 22 atom types. Only 2-atom interactions.
@@ -346,9 +408,9 @@ RcR = 5.1 # Radial cutoff
 EtaR = torch.tensor([19.7]) # Radial decay
 
 # ------------------------------------------------------------------------
-if tag == 'reduced-gaussian-4':
+if encoding == 'reduced-gaussian-4':
     RsR = torch.tensor([0.80, 2.14, 3.49, 4.83]) # 4 shifts evenly spaced
-elif tag == 'reduced-gaussian-8':
+elif encoding == 'reduced-gaussian-8':
     RsR = torch.tensor([0.80, 1.38, 1.95, 2.53, 3.10, 3.68, 4.25, 4.83]) # 8 shifts
 else:
     RsR = torch.tensor([0.80, 1.07, 1.34, 1.61, 1.88, 2.14, 2.41, 2.68, 
@@ -370,17 +432,17 @@ for index, row in tqdm(df.iterrows()):
 
     protein_path = folder + f"{pdb}/rec_h_opt.pdb"
 
-    if tag == 'binary':
+    if encoding == 'binary':
         mol_df, aevs = GetMolAEVs_extended_binary(protein_path, lig, atom_keys, radial_coefs, atom_map)
-    elif tag == 'distance-binned':
+    elif encoding == 'distance-binned':
         mol_df, aevs = GetMolAEVs_extended_distbinned(protein_path, lig, atom_keys, radial_coefs, atom_map)
     else:
         mol_df, aevs = GetMolAEVs_extended(protein_path, lig, atom_keys, radial_coefs, atom_map)
-    graph = mol_to_graph(lig, mol_df, aevs)
+    graph = mol_to_graph(lig, mol_df, aevs, topology_cutoff=topology_cutoff)
     mol_graphs[unique_identify] = graph
 
 #save the graphs to use as input for the GNN models
-suffix = f"_{tag}" if tag != "original" else ""
-output_file_graphs = f"data/bindingnet{suffix}.pickle"
+output_file_graphs = "data/" + outdir + "/bindingnet.pickle"
+Path("data/" + outdir).mkdir(parents=True, exist_ok=True)
 with open(output_file_graphs, 'wb') as handle:
     pickle.dump(mol_graphs, handle, protocol=pickle.HIGHEST_PROTOCOL)

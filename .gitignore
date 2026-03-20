@@ -1,3 +1,7 @@
+# big directories
+data/bindingnet
+data/bindingdb
+
 # Apptainer / Singularity containers
 *.sif
 
@@ -15,6 +19,9 @@ data/*_processed.csv
 
 # Evaluate intermediates
 evaluate/**/*_processed.csv
+
+#Model outputs
+output/trained_models/
 
 # Generated data artifacts
 *.pickle
@@ -111,7 +118,7 @@ wandb_cache/
 wandb_config/
 
 # Trained models
-output/trained_models/
+output/trained_models/  
 *.model
 
 
