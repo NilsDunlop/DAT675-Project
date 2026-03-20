@@ -38,6 +38,10 @@ def main():
                              'unless those are explicitly provided.')
     parser.add_argument('--skip_exclusion', action='store_true',
                         help='Skip benchmark exclusion (WARNING: causes data leakage)')
+    parser.add_argument('--encoding', type=str, default='original',
+                        choices=['binary', 'distance-binned', 'reduced-gaussian-4',
+                                 'reduced-gaussian-8', 'original'],
+                        help='Encoding scheme used for AEVs')
     args = parser.parse_args()
 
     if args.tag is not None:
@@ -159,6 +163,8 @@ def main():
     dataset = 'pdbbind_U_bindingnet_U_bindingdb_ligsim90_fep_benchmark'
     if args.tag:
         dataset = f'{dataset}_{args.tag}'
+    if args.encoding != 'original':
+        dataset = f'{dataset}_{args.encoding}'
 
     df_train = data[data['split'] == 'train']
     train_ids, train_y = list(df_train['unique_id']), list(df_train['pK'])
