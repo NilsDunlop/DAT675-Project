@@ -1,4 +1,5 @@
 import torch
+from pathlib import Path
 import random
 import time
 import torch.nn as nn
@@ -83,6 +84,12 @@ def parse_args():
     parser.add_argument('--head', type=int, default=3)
     parser.add_argument('--lr', type=float, default=0.00012291937615434127)
     parser.add_argument('--activation_function', type=str, default='leaky_relu')
+    parser.add_argument('--output', type=str, default='output')
+    parser.add_argument('--input', type=str, default='processed')
+    parser.add_argument('--wandb_project', type=str, default='AEV-PLIG',
+                        help='WandB project name (e.g. AEV-PLIG-Topology)')
+    parser.add_argument('--tag', type=str, default=None,
+                        help='Short variant label for WandB run names (e.g. cutoff5)')
     args = parser.parse_args()
     return args
 
@@ -101,15 +108,20 @@ def train_NN(args):
     print('Running dataset {} on model {}.'.format(dataset, model_st))
     
     timestr = time.strftime("%Y%m%d-%H%M%S")
-    model_output_dir = os.path.join("output", "trained_models")
+    model_output_dir = os.path.join(args.output, "trained_models")
+    Path(model_output_dir).mkdir(parents=True, exist_ok=True)
+    input_dir = args.input
     
-    train_data = GraphDataset(root='data', dataset=dataset+'_train', y_scaler=None)
-    valid_data = GraphDataset(root='data', dataset=dataset+'_valid', y_scaler=train_data.y_scaler)
-    test_data = GraphDataset(root='data', dataset=dataset+'_test', y_scaler=train_data.y_scaler)
+    train_data = GraphDataset(root='data', outdir=input_dir, dataset=dataset+'_train', y_scaler=None)
+    valid_data = GraphDataset(root='data', outdir=input_dir, dataset=dataset+'_valid', y_scaler=train_data.y_scaler)
+    test_data = GraphDataset(root='data',  outdir=input_dir, dataset=dataset+'_test', y_scaler=train_data.y_scaler)
 
     seeds = [100, 123, 15, 257, 2, 2012, 3752, 350, 843, 621]
     for i,seed in enumerate(seeds):
-        wandb.init(project="AEV-PLIG", group=timestr, name=f"{model_st}_{dataset}_seed_{seed}", config=vars(args), reinit=True)
+        run_tag = args.tag or dataset
+        wandb.init(project=args.wandb_project, group=timestr,
+                   name=f"{run_tag}_seed_{seed}",
+                   config=vars(args), reinit=True)
         random.seed(seed)
         torch.manual_seed(int(seed))
         
@@ -152,7 +164,7 @@ def train_NN(args):
     
     df_test['preds'] = df_test.iloc[:,1:].mean(axis=1)
 
-    scaler_file = timestr + '_model_' + model_st + '_' + dataset + '.pickle'
+    scaler_file = os.path.join(model_output_dir, timestr + '_model_' + model_st + '_' + dataset + '.pickle')
     with open(scaler_file,'wb') as f:
         pickle.dump(train_data.y_scaler, f)
     

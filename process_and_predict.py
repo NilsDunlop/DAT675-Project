@@ -16,6 +16,7 @@ import time
 import sys
 import warnings
 from concurrent.futures import ProcessPoolExecutor, as_completed 
+import scipy.spatial.distance
 
 import multiprocessing
 from functools import partial
@@ -276,6 +277,51 @@ def mol_to_graph(mol, mol_df, aevs, extra_features=["atom_symbol",
     return len(mol_df), features, edge_index, edge_attr
 
 
+def mol_to_graph_cutoff(mol, mol_df, aevs, topology_cutoff=5.0,
+                        extra_features=["atom_symbol", "num_heavy_atoms",
+                                        "total_num_Hs", "explicit_valence",
+                                        "is_aromatic", "is_in_ring"]):
+    """Cutoff-based spatial topology (Model 3). Identical logic to generate_*_graphs.py."""
+    features = []
+    heavy_atom_index = []
+    idx_to_idx = {}
+    coords = []
+    counter = 0
+
+    for atom in mol.GetAtoms():
+        if atom.GetSymbol() != "H":
+            idx_to_idx[atom.GetIdx()] = counter
+            aev_idx = mol_df[mol_df['ATOM_INDEX'] == atom.GetIdx()].index
+            heavy_atom_index.append(atom.GetIdx())
+            feature = np.append(atom_features(atom), aevs[aev_idx, :])
+            features.append(feature)
+
+            pos = mol.GetConformer().GetAtomPosition(atom.GetIdx())
+            coords.append([pos.x, pos.y, pos.z])
+            counter += 1
+
+    coords = np.array(coords)
+    n_atoms = len(coords)
+
+    edges = []
+    dist_matrix = scipy.spatial.distance.cdist(coords, coords)
+
+    for i in range(n_atoms):
+        neighbors = np.where(dist_matrix[i] <= topology_cutoff)[0]
+        for j in neighbors:
+            if i != j:
+                edge = [i, j, dist_matrix[i, j]]
+                edges.append(edge)
+
+    df = pd.DataFrame(edges, columns=['atom1', 'atom2', 'distance'])
+    df = df.sort_values(by=['atom1', 'atom2'])
+
+    edge_index = df[['atom1', 'atom2']].to_numpy().tolist()
+    edge_attr = df[['distance']].to_numpy().tolist()
+
+    return len(mol_df), features, edge_index, edge_attr
+
+
 def predict(model, device, loader, y_scaler=None):
     model.eval()
     model.to(device)
@@ -452,9 +498,13 @@ def process_single_graph(row_dict, atom_keys, radial_coefs, atom_map):
     unique_id = row_dict["unique_id"]
     use_mol2 = row_dict.get("_use_mol2", False)
     mol2_file = row_dict.get("mol2_file")
+    topology_cutoff = row_dict.get("_topology_cutoff")
     lig = load_molecule(sdf_file, use_mol2=use_mol2, mol2_path=mol2_file)
     mol_df, aevs = GetMolAEVs_extended(pdb_file, lig, atom_keys, radial_coefs, atom_map)
-    graph = mol_to_graph(lig, mol_df, aevs)
+    if topology_cutoff is not None:
+        graph = mol_to_graph_cutoff(lig, mol_df, aevs, topology_cutoff=topology_cutoff)
+    else:
+        graph = mol_to_graph(lig, mol_df, aevs)
     return unique_id, graph
     
 def generate_graphs(config):
@@ -483,9 +533,9 @@ def generate_graphs(config):
 
     mol_graphs = {}
     rows = [row.to_dict() for index, row in df.iterrows()]
-    # Pass use_mol2 flag to each worker via row dict
     for row in rows:
         row["_use_mol2"] = config.use_mol2
+        row["_topology_cutoff"] = getattr(config, 'topology_cutoff', None)
     num_workers = config.num_workers
     
     print(f"Using {num_workers} workers for graph generation.")
@@ -520,9 +570,9 @@ def make_predictions(config):
     torch.set_num_threads(config.num_workers)
     
     model_name = config.trained_model_name
-    
+    model_dir = config.model_dir
 
-    with open('output/trained_models/' + model_name + '.pickle','rb') as f:
+    with open(os.path.join(model_dir, model_name + '.pickle'), 'rb') as f:
         scaler = pickle.load(f)
 
     """
@@ -551,8 +601,8 @@ def make_predictions(config):
     modeling = model_dict['GATv2Net']
     model = modeling(node_feature_dim=test_data.num_node_features, edge_feature_dim=test_data.num_edge_features, config=config)
 
-    for i in range(10):
-        model_path = 'output/trained_models/' + config.trained_model_name + '_' + str(i) + '.model'
+    for i in range(config.num_models):
+        model_path = os.path.join(model_dir, config.trained_model_name + '_' + str(i) + '.model')
         model.load_state_dict(torch.load(model_path, map_location=config.device))
 
         graph_ids_test, P_test = predict(model, config.device, test_loader, scaler)
@@ -586,6 +636,14 @@ def parse_args():
     parser.add_argument('--device', type=str, default='auto', help='Device for computation: "auto" (use CUDA if available), "cpu" (force CPU), or a specific CUDA device index (e.g., "0").')
     parser.add_argument('--skip_validation', action='store_true',help='Bypass Biopandas validation of protein structures.')
     parser.add_argument('--use_mol2', action='store_true', help='Load ligands from .mol2 files instead of .sdf (matches generate_pdbbind_graphs.py, avoids valence errors).')
+    parser.add_argument('--topology_cutoff', type=float, default=None,
+                        help='Use distance-cutoff spatial topology instead of bond topology. '
+                             'Set to the cutoff in Angstroms (e.g. 5.0). '
+                             'Must match the topology used during training.')
+    parser.add_argument('--model_dir', type=str, default='output/trained_models',
+                        help='Directory containing .model and .pickle files')
+    parser.add_argument('--num_models', type=int, default=10,
+                        help='Number of ensemble models (default: 10)')
     
     args = parser.parse_args()
     return args

@@ -1,3 +1,7 @@
+# big directories
+data/bindingnet
+data/bindingdb
+
 # Apptainer / Singularity containers
 *.sif
 
@@ -14,11 +18,14 @@ data/CASF-2016/
 # Evaluate intermediates
 evaluate/**/*_processed.csv
 
+#Model outputs
+output/trained_models/
+
 # Generated data artifacts
 *.pickle
 data/processed/
 data/*_processed.csv
-data/authors_baseline/
+data
 
 # Compressed archives
 *.tar.gz
@@ -111,7 +118,6 @@ wandb_cache/
 wandb_config/
 
 # Output Models and Data
-output/
 *.pickle
 *.model
 

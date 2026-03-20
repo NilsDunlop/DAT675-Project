@@ -1,0 +1,81 @@
+name: aev-plig
+
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+
+dependencies:
+
+  # Core
+  - python=3.8
+  - pip  # harmless to include even if unused
+  - setuptools
+  - wheel
+
+  # PyTorch GPU stack
+  - pytorch=2.4
+  - torchvision=0.19
+  - torchaudio=2.4
+  - pytorch-cuda=12.1
+
+  # Scientific stack
+  - numpy=1.24
+  - scipy=1.10
+  - pandas=2.0
+  - scikit-learn=1.3
+  - networkx=3.1
+  - sympy=1.13
+
+  # Chemistry / scientific
+  - rdkit=2024.03
+  - qcelemental=0.28
+
+  # PyTorch ecosystem
+  - pyg=2.5
+
+  # TorchANI
+  - torchani=2.2
+
+  # Utilities
+  - tqdm
+  - requests
+  - psutil
+  - joblib
+
+  # Async + web libs
+  - aiohttp=3.9
+  - aiosignal
+  - attrs
+  - frozenlist
+  - multidict
+  - yarl
+
+  # Parsing and config
+  - pyparsing
+  - pydantic=2.8
+  - typing_extensions
+
+  # Data/time
+  - python-dateutil
+  - pytz
+  - tzdata
+
+  # Misc scientific dependencies
+  - pint
+  - mpmath
+  - lark-parser
+
+  # IO and misc
+  - pillow
+  - filelock
+  - fsspec
+
+  # Packaging/runtime
+  - importlib-metadata
+  - zipp
+  - urllib3
+  - charset-normalizer
+  - certifi
+  - idna
